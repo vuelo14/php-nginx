@@ -1,0 +1,40 @@
+name: php-nginx
+
+services:
+  # Service Utama: PHP 8.3 + Nginx (All-in-One Container)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Ganti dengan nama image GHCR Anda setelah dibuild oleh GitHub Actions:
+    # image: ghcr.io/<github-username>/php-nginx:latest
+    container_name: php_nginx_app
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    environment:
+      # Default ke /var/www/html/public (Laravel). Ubah ke /var/www/html jika PHP biasa.
+      - DOCUMENT_ROOT=/var/www/html/public
+    volumes:
+      - ./:/var/www/html
+      # Uncomment jika ingin live-reload konfigurasi Nginx lokal:
+      # - ./docker/nginx/default.conf:/etc/nginx/http.d/default.conf
+    networks:
+      - app_network
+
+  # Service Cache & Queue (Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: php_nginx_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
+    # Jika ingin menghubungkan ke network database eksternal yang sudah ada:
+    # external: true
+    # name: db
