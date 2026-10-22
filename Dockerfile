@@ -62,7 +62,7 @@ RUN sed -i 's/user nginx;/user www-data;/g' /etc/nginx/nginx.conf \
 # 5. Salin Konfigurasi Nginx, PHP, Supervisor, dan Entrypoint
 COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
 COPY docker/php/custom.ini /usr/local/etc/php/conf.d/custom.ini
-COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY docker/supervisor/supervisord.conf /etc/supervisord.conf
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 RUN chmod +x /usr/local/bin/entrypoint.sh
@@ -71,4 +71,4 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 EXPOSE 80 443
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
