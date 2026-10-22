@@ -1,6 +1,6 @@
-# PHP 8.3 + Nginx (Multi-Architecture: ARM64 & AMD64)
+# PHP 8.3 (v8.3.36) + Nginx (Multi-Architecture: ARM64 & AMD64)
 
-Docker image all-in-one yang menggabungkan **PHP 8.3-FPM** dan **Nginx** dalam 1 container, dikelola menggunakan **Supervisor**. Image ini mendukung arsitektur multi-platform (**ARM64** seperti Apple Silicon / Raspberry Pi / AWS Graviton dan **AMD64/x86_64** untuk PC/Server standar), serta otomatis dibuild dan dipublish ke **GitHub Container Registry (GHCR)** setiap kali Anda melakukan `git push` ke GitHub.
+Docker image all-in-one yang menggabungkan **PHP 8.3.36-FPM** dan **Nginx** dalam 1 container, dikelola menggunakan **Supervisor**. Image ini mendukung arsitektur multi-platform (**ARM64** seperti Apple Silicon / Raspberry Pi / AWS Graviton dan **AMD64/x86_64** untuk PC/Server standar), serta otomatis dibuild dan dipublish ke **GitHub Container Registry (GHCR)** setiap kali Anda melakukan `git push` ke GitHub.
 
 ---
 
