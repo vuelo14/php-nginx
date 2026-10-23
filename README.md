@@ -6,7 +6,9 @@ Docker image all-in-one yang menggabungkan **PHP 8.3.36-FPM** dan **Nginx** dala
 
 ## 🚀 Fitur Unggulan
 
-- **All-in-One Container**: PHP-FPM dan Nginx berjalan bersamaan dalam satu container menggunakan Supervisor.
+- **All-in-One Container**: PHP-FPM, Nginx, dan Background Worker/Scheduler berjalan bersamaan dalam satu container menggunakan Supervisor.
+- **Keamanan Non-Root (`USER www-data`)**: Container dijalankan tanpa hak akses `root` demi keamanan standar produksi.
+- **Built-in Queue Worker & Scheduler**: Mendukung eksekusi `php artisan queue:work` / worker kustom dan `php artisan schedule:work` langsung dalam container via Environment Variables atau file konfigurasi Supervisor.
 - **Dukungan Multi-Arch**: Otomatis dibuild untuk `linux/arm64` dan `linux/amd64` melalui GitHub Actions + QEMU + Buildx.
 - **Otomatisasi Penuh (CI/CD)**: Terpicu secara otomatis saat `git push` ke branch `main`/`master` atau saat membuat tag rilis.
 - **GitHub Container Registry (GHCR)**: Langsung dipublish ke `ghcr.io` tanpa perlu setup secret token Docker Hub manual.
@@ -30,11 +32,13 @@ Docker image all-in-one yang menggabungkan **PHP 8.3.36-FPM** dan **Nginx** dala
 │   ├── php/
 │   │   └── custom.ini              # Konfigurasi PHP (memory, upload limit, opcache)
 │   └── supervisor/
-│       └── supervisord.conf        # Supervisor untuk menjalankan PHP-FPM & Nginx
+│       ├── supervisord.conf        # Supervisor untuk PHP-FPM, Nginx, & include conf.d
+│       └── conf.d/
+│           └── queue-worker.conf.example # Contoh konfigurasi worker supervisor
 ├── public/
 │   └── index.php                   # Halaman uji coba / info sistem
 ├── .dockerignore                   # File/folder yang diabaikan saat build docker
-├── Dockerfile                      # Spesifikasi Dockerfile multi-arch
+├── Dockerfile                      # Spesifikasi Dockerfile multi-arch (USER www-data)
 ├── default.conf                    # Backup / mount Nginx config
 ├── docker-compose.yml              # Konfigurasi Docker Compose lokal
 └── README.md
@@ -82,11 +86,67 @@ docker compose up -d --build
 # Cek status container
 docker compose ps
 
-# Lihat logs PHP-FPM dan Nginx
+# Lihat logs container (PHP-FPM, Nginx, Worker)
 docker compose logs -f app
 ```
 
 Buka browser Anda di `http://localhost:8000`. Anda akan melihat halaman informasi sistem PHP dan arsitektur CPU (`aarch64` atau `x86_64`).
+
+---
+
+## ⚙️ Menjalankan Worker / Scheduler Laravel dalam Satu Container
+
+Terdapat dua cara untuk menjalankan perintah worker (`php artisan queue:work` atau worker kustom) dalam satu container:
+
+### Cara 1: Menggunakan Environment Variables (Mudah & Praktis)
+
+Cukup tambahkan environment variable di `docker-compose.yml` atau saat `docker run`:
+
+```yaml
+services:
+  app:
+    environment:
+      # Aktifkan queue worker
+      - ENABLE_WORKER=true
+      # Perintah worker yang diinginkan (opsional, default: php /var/www/html/artisan queue:work ...)
+      - WORKER_COMMAND=php /var/www/html/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+      # Jumlah proses worker (opsional, default: 1)
+      - WORKER_NUMPROCS=2
+
+      # Aktifkan scheduler cron Laravel otomatis (opsional)
+      - ENABLE_SCHEDULER=true
+```
+
+### Cara 2: Mount File Konfigurasi Supervisor Kustom
+
+Letakkan file `.conf` (contoh ada di `docker/supervisor/conf.d/queue-worker.conf.example`) ke dalam folder `/etc/supervisor/conf.d/` melalui volume:
+
+```yaml
+services:
+  app:
+    volumes:
+      - ./docker/supervisor/conf.d:/etc/supervisor/conf.d
+```
+
+---
+
+## 🛡️ Keamanan & User Non-Root (`www-data`)
+
+Container ini berjalan dengan `USER www-data` (UID 82). Semua proses (`supervisord`, `nginx`, `php-fpm`, dan `worker`) berjalan di bawah user non-root ini.
+
+Jika Anda menjalankan Laravel dan me-mount source code dari host, pastikan direktori `storage` dan `bootstrap/cache` dapat ditulis oleh `www-data`:
+
+```bash
+# Berikan izin tulis ke storage & cache
+chmod -R 775 storage bootstrap/cache
+```
+
+Jika Anda ingin menjalankan perintah artisan manual dari terminal:
+```bash
+# Jalankan perintah artisan (otomatis berjalan sebagai user www-data)
+docker compose exec app php artisan migrate
+docker compose exec app php artisan queue:restart
+```
 
 ---
 
@@ -107,7 +167,6 @@ docker run -d \
   -p 80:80 \
   -v $(pwd):/var/www/html \
   -e DOCUMENT_ROOT=/var/www/html/public \
+  -e ENABLE_WORKER=true \
   ghcr.io/<username>/<repo-name>:latest
 ```
-
-Docker akan secara otomatis mendeteksi arsitektur ARM perangkat Anda dan mengunduh layer `linux/arm64` tanpa konfigurasi tambahan!

@@ -1,7 +1,7 @@
 name: php-nginx
 
 services:
-  # Service Utama: PHP 8.3 + Nginx (All-in-One Container)
+  # Service Utama: PHP 8.3 + Nginx + Worker (All-in-One Container sebagai user www-data)
   app:
     build:
       context: .
@@ -15,10 +15,22 @@ services:
     environment:
       # Default ke /var/www/html/public (Laravel). Ubah ke /var/www/html jika PHP biasa.
       - DOCUMENT_ROOT=/var/www/html/public
+
+      # --- Fitur Queue Worker & Scheduler Laravel dalam Satu Container ---
+      # Set true jika ingin menjalankan queue worker otomatis di background:
+      - ENABLE_WORKER=false
+      # Perintah worker yang dijalankan (default: php /var/www/html/artisan queue:work --sleep=3 --tries=3 --max-time=3600)
+      - WORKER_COMMAND=php /var/www/html/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+      - WORKER_NUMPROCS=1
+
+      # Set true jika ingin menjalankan scheduler cron Laravel otomatis:
+      - ENABLE_SCHEDULER=false
     volumes:
       - ./:/var/www/html
       # Uncomment jika ingin live-reload konfigurasi Nginx lokal:
       # - ./docker/nginx/default.conf:/etc/nginx/http.d/default.conf
+      # Uncomment jika ingin menambahkan konfigurasi supervisor kustom:
+      # - ./docker/supervisor/conf.d:/etc/supervisor/conf.d
     networks:
       - app_network
 
